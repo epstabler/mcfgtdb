@@ -10,17 +10,15 @@ If your platform supports the OCaml
 native code compilation, for an example, type:
 
    make
-
    ./mcfgtdb
-
    a b b c d d
 
-  We have a few example grammars in this directory.
+We have a few example grammars in this directory.
 To use one of them, for example mcfg1.ml, execute:
 
    newg mcfg1
 
-  this should copy mcfg1.ml to g0.ml and compile it, and start again 
+this should copy mcfg1.ml to g0.ml and compile it, and start again 
 as described above
 
 The minimum probability bound on derivations is specified in the
@@ -32,7 +30,6 @@ After compiling, to keep the executable and docs but remove intermediate files:
 To clean up everything and re-compile:
 
    make realclean
-
    make
 
 For more details, see README.pdf and the wiki 
