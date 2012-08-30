@@ -15,10 +15,10 @@ native code compilation, for an example, type:
 
    a b b c d d
 
-We have a few example grammars in this directory.
+  We have a few example grammars in this directory.
 To use one of them, for example mcfg1.ml, execute:
 
-    newg mcfg1
+   newg mcfg1
 
   this should copy mcfg1.ml to g0.ml and compile it, and start again 
 as described above
