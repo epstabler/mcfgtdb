@@ -10,7 +10,9 @@ If your platform supports the OCaml
 native code compilation, for an example, type:
 
    make
+   
    ./mcfgtdb
+   
    a b b c d d
 
 We have a few example grammars in this directory.
@@ -30,6 +32,7 @@ After compiling, to keep the executable and docs but remove intermediate files:
 To clean up everything and re-compile:
 
    make realclean
+   
    make
 
 For more details, see README.pdf and the wiki 
