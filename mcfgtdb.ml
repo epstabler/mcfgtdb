@@ -5,11 +5,7 @@
  purpose: top-down beam parser for MCFG
 *)
 
-(* string library for Str.regexp -> string -> string list = <fun>, used by process *)
-#use "makeq.ml"
-#load "str.cma";;
-open Str 
-exception Not_Accepted
+open Makeq
 
 type cat = int
 type imap = (int * int) list    
@@ -53,20 +49,20 @@ let least = let rec least0 sofar = function [] -> sofar | x::xs -> least0 (min s
 module ICatPoset = (* order by comparing least index, an int list *)
   struct
     type t = iCat
-    let le = fun ((_,i1):iCat) ((_,i2):iCat) -> compare (least i1) (least i2) < 1
+    let le = fun ((_,i1):iCat) -> fun ((_,i2):iCat) -> compare (least i1) (least i2) < 1
   end
 
-module IQ = MakeQ (ICatPoset)    (* for the queues of predictions *)
+module IQ = Makeq (ICatPoset)    (* for the queues of predictions *)
 
 type der = input * IQ.t * float  (* the type of partial derivations *)
 
 module DerivationPoset = (* order by (decreasing) probability, a float *)
   struct
     type t = der
-    let le = fun ((_,_,p1):der) ((_,_,p2):der) -> compare p2 p1 < 1
+    let le = fun ((_,_,p1):der) -> fun ((_,_,p2):der) -> compare p2 p1 < 1
   end
 
-module DQ = MakeQ (DerivationPoset)  (* for the queue of (partial) derivations *)
+module DQ = Makeq (DerivationPoset)  (* for the queue of (partial) derivations *)
 
 (*** optional print functions *)
 let ilist out = fun x -> 
@@ -100,33 +96,13 @@ let ingExpansions : ing -> expansions array = fun g ->
   let a = Array.make ((numberOfCats g)+1) [] in
     List.iter (fun ((c, rhs), p) -> (a.(c) <- (rhs, p)::a.(c))) g; a
 
-(*** begin EXAMPLE **)
-let (g0Cat: int->string) = function
-  | 0 -> "S" | 1 -> "AC" | 2 -> "BD" | 3 -> "A" | 4 -> "B" | 5 -> "C" | 6 -> "D"
-  | _ -> failwith "Error: g0Cat"
-
-let (g0:ing) = [
-  ((0, IN [(1, [(0, 0); (0, 2)]); (2, [(0, 1); (0, 3)])]), 1.);
-  ((1, IN [(3, [(0, 0)]); (5, [(1, 0)]); (1, [(0, 1); (1, 1)])]), 0.5);
-  ((1, IN [(3, [(0, -1)]); (5, [(1, -1)])]), 0.5);
-  ((2, IN [(4, [(0, 0)]); (6, [(1, 0)]); (2, [(0, 1); (1, 1)])]), 0.5);
-  ((2, IN [(4, [(0, -1)]); (6, [(1, -1)])]), 0.5);
-  ((3, IT "a"), 1.);
-  ((4, IT "b"), 1.);
-  ((5, IT "c"), 1.);
-  ((6, IT "d"), 1.)
-]
-
-let g0exps = ingExpansions g0
-(*** end EXAMPLE -- with example here, we can put print trace function into def of derive *)
-
 (* OK, now the indexing for linear order -- as in Stabler'11 *)
 let rec extendIndices : indices -> imap -> indices =  fun i0 -> function
   | [] -> []
   | (k,x)::more when x<0 -> (List.nth i0 k)::extendIndices i0 more
   | (k,x)::more -> ((List.nth i0 k)@[x])::extendIndices i0 more
 
-let rec insertPredictions : indices -> IQ.t -> nrhs -> IQ.t = fun i0 iq -> function
+let rec insertPredictions : indices -> IQ.t -> nrhs -> IQ.t = fun i0 -> fun iq -> function
   | [] -> iq
   | (cat,ill)::more ->
     insertPredictions i0 (IQ.add (cat, extendIndices i0 ill) iq) more
@@ -138,7 +114,7 @@ let rec trimIndices: int -> indices -> indices = fun i -> function
   | []::_ -> raise InitialIndexDiffers
   | [] -> []
 
-let rec trimmedElements : int -> IQ.t -> iCat list = fun i iq0 -> 
+let rec trimmedElements : int -> IQ.t -> iCat list = fun i -> fun iq0 -> 
   if IQ.is_empty iq0
   then []
   else let ((c,ixs),iq) = IQ.extract_min iq0 in (c,trimIndices i ixs)::trimmedElements i iq
@@ -159,12 +135,12 @@ let trimIQ : IQ.t -> IQ.t = fun iq0 ->
                        with InitialIndexDiffers -> iq0
 
 let prunedInsert : DQ.t -> float -> der -> DQ.t = (* prune derivation if newP not above bound *)
-   fun dq pb (s,iq,newP) -> 
+   fun dq -> fun pb -> fun (s,iq,newP) -> 
      if newP > pb then DQ.add (s,trimIQ iq,newP) dq else dq
 
 (* recognizer core function *)
 let extendDerivation : DQ.t -> float -> indices -> input -> IQ.t -> float -> expansion -> DQ.t =
-  fun dq pb i0 input iq p0 -> function
+  fun dq -> fun pb -> fun i0 -> fun input -> fun iq -> fun p0 -> function
     | IT s, p -> (match input with
         | head::tail -> if s=head then prunedInsert dq pb (tail, iq, p0 *. p) else dq (* scan *)
         | [] -> dq)
@@ -186,12 +162,7 @@ let rec derive : (int -> string) -> expansions array -> float -> DQ.t -> bool =
           derive f exps pb (List.fold_left
                          (fun dq x -> extendDerivation dq pb i0 in0 iq1 p0 x)
                          dq1
-                         exps.(cat));;
-
-let time f x =
-    let t = Sys.time() in
-    let fx = f x in
-    ( Printf.printf "time: %fs\n" (Sys.time() -. t); flush stdout ; fx; )
+                         exps.(cat))
 
 (* create the initial derivation queue and parse -- 
   minbound is for our first simple pruning rule: analyses with p < this bound are discarded *)
@@ -200,10 +171,11 @@ let recognize g f minbound input =
   let init  = IQ.add (0,[[]]) IQ.empty in
   let prob = 1. in
   let dq = (DQ.add (input,init,prob) DQ.empty) in
-    time (derive f exps minbound) dq
+    derive f exps minbound dq 
+(*    time (derive f exps minbound) dq *)
 
 (* examples
-OK:
+OK: 
   recognize g0 g0Cat 0.0000001 ["a";"b";"c";"d"];;
 NO:
   recognize g0 g0Cat 0.5 ["a";"b";"c";"d"];;
@@ -211,26 +183,4 @@ OK: this example is used in Stabler'11
   recognize g0 g0Cat 0.0000001 ["a";"b";"b";"c";"d";"d"];;
 NO:
   recognize g0 g0Cat 0.0000001 ["a";"a";"b";"c";"d"];;
-*)
-
-let rec loop0 f exps min0 iq0 =  (* get input and set up mutable parts of initial dq *)
-  print_string ("\n: ");
-  let linestring = read_line() in
-  let input = split (regexp "[\ \t]+") linestring in
-    List.iter print_string input;
-    if List.length input > 0 && List.hd input = "q"
-    then ()
-    else
-      let dq = (DQ.add (input,iq0,1.0) DQ.empty) in
-      let accepted = time (derive f exps min0) dq in
-	Printf.fprintf stdout "accepted: %b" accepted;
-	loop0 f exps min0 iq0;;
-
-let go g f min0 =
-  let exps = ingExpansions g in
-  let init  = IQ.add (0,[[]]) IQ.empty in
-    loop0 f exps min0 init 
-
-(*
-let _ = go g0 g0Cat 0.00000001
 *)
