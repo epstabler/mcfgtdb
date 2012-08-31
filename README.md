@@ -17,9 +17,4 @@ To change grammar, for example to mcfg1.ml, execute:
 this copies mcfg1.ml to g0.ml and recompiles. 
 The minimum probability bound on derivations is specified in the last line of top.ml
 
-To clean up everything and recompile, as usual:
-
-   make realclean
-   make
-
 
