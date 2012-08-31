@@ -1,5 +1,12 @@
-MCFG top down parsing
-=====================
+MCFG top down beam parsing
+==========================
+
+This parser is described in
+
+- Stabler (2011) Top-down recognizers for MCFGs and MGs.
+Proceedings of the Workshop on Cognitive Modeling and Computational Linguistics CMCL,
+49th Annual Meeting of the {A}ssociation for Computational Linguistics.
+http://www.linguistics.ucla.edu/people/stabler/Stabler11-CMCL.pdf
 
 For description, see README.pdf and the wiki https://github.com/epstabler/mcfgtdb/wiki
 
