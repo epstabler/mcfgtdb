@@ -3,7 +3,7 @@ MCFG top down parsing
 
 For description, see README.pdf and the wiki https://github.com/epstabler/mcfgtdb/wiki
 
-If your platform supports OCaml native code compilation, for an example, type:
+If your platform supports OCaml native code compilation, simply type:
 
       make
       ./mcfgtdb
